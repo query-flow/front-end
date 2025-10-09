@@ -1,0 +1,61 @@
+/* Centraliza o card na tela inteira */
+.login-wrap{
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;   /* centro horiz */
+  align-items: center;       /* centro vert */
+  background: radial-gradient(900px 900px at 50% -10%, #11131f, transparent 60%);
+}
+
+/* Card do login */
+.login-card{
+  width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;     /* centraliza conteúdo interno */
+}
+
+/* Logo e textos de topo */
+.logo-img{
+  width: 80px;
+  height: auto;
+  margin-bottom: 6px;
+}
+.logo-text{
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.subtitle{
+  color: var(--muted);
+  margin: 0 0 10px 0;
+  text-align: center;
+}
+
+/* Labels e inputs */
+label{ font-size: 13px; color: var(--muted); justify-self: start; }
+input{
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+/* Mensagem de erro */
+.error{ color: #ff6b6b; font-size: 13px; margin-top: 4px; justify-self: start; }
+
+/* Link secundário */
+.link{
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  justify-self: start;
+}
