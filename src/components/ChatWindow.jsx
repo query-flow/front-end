@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import MessageBubble from './MessageBubble.jsx'
-import { sendPrompt } from '../services/api.js'
+import { perguntarOrg } from '../services/api.js'
 import '../styles/home.css'
 import '../styles/chat.css'
 
@@ -9,57 +9,68 @@ export default function ChatWindow({ chat, onSend }) {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
 
-  // Scroll para o fim quando novas mensagens chegam
   useEffect(() => {
     if (!listRef.current) return
     listRef.current.scrollTop = listRef.current.scrollHeight
   }, [chat?.messages?.length])
 
-  async function submit() {
-    const trimmed = text.trim()
-    if (!trimmed || sending || !chat) return
+  async function send() {
+    const pergunta = text.trim()
+    if (!pergunta) return
+
     setSending(true)
     setText('')
-
-    // adiciona msg do usuário
-    onSend({ role: 'user', content: trimmed })
+    // adiciona mensagem do usuário
+    onSend({ role: 'user', type: 'text', content: pergunta })
 
     try {
-      const reply = await sendPrompt(trimmed) // chamada real da API
-      onSend({ role: 'assistant', content: reply })
+      const resp = await perguntarOrg({ pergunta })
+      // Quebramos a resposta em blocos: SQL, tabela, insights (resumo e gráfico)
+      if (resp?.sql) {
+        onSend({ role: 'assistant', type: 'code', lang: 'sql', content: resp.sql })
+      }
+      if (resp?.resultado?.colunas && resp?.resultado?.dados) {
+        onSend({
+          role: 'assistant',
+          type: 'table',
+          content: {
+            columns: resp.resultado.colunas,
+            rows: resp.resultado.dados
+          }
+        })
+      }
+      if (resp?.insights?.summary) {
+        onSend({ role: 'assistant', type: 'text', content: resp.insights.summary })
+      }
+      if (resp?.insights?.chart) {
+        onSend({ role: 'assistant', type: 'image_base64', content: resp.insights.chart })
+      }
     } catch (e) {
-      onSend({ role: 'assistant', content: 'Erro ao chamar API.' })
+      onSend({ role: 'assistant', type: 'text', content: `❌ ${e.message}` })
     } finally {
       setSending(false)
     }
   }
 
-  function onKeyDown(e) {
+  function onKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      submit()
+      if (!sending) send()
     }
   }
 
-  if (!chat) {
-    return (
-      <section className="chat-empty">
-        <h1>Por onde começamos?</h1>
-        <p>Crie um novo chat na barra lateral.</p>
-      </section>
-    )
-  }
+  if (!chat) return <div className="chat-empty" />
 
   return (
-    <section className="chat">
+    <div className="chat-window">
       <div className="chat-messages" ref={listRef}>
-        {chat.messages.map((m, i) => (
-          <MessageBubble key={i} role={m.role} content={m.content} />
+        {chat.messages.map((m, idx) => (
+          <MessageBubble key={idx} role={m.role} type={m.type} content={m.content} lang={m.lang} />
         ))}
         {chat.messages.length === 0 && (
           <div className="chat-empty">
             <h1>Por onde começamos?</h1>
-            <p>Faça uma pergunta para a sua plataforma.</p>
+            <p>Faça uma pergunta sobre seus dados.</p>
           </div>
         )}
       </div>
@@ -70,11 +81,13 @@ export default function ChatWindow({ chat, onSend }) {
           placeholder="Digite sua pergunta..."
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={onKey}
+          disabled={sending}
         />
-        <button className="btn-primary" disabled={sending} onClick={submit}>Enviar</button>
+        <button disabled={sending} onClick={send}>
+          {sending ? 'Enviando...' : 'Enviar'}
+        </button>
       </div>
-      <div className="hint">Enter para enviar • Shift+Enter para nova linha</div>
-    </section>
+    </div>
   )
 }

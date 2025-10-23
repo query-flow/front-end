@@ -1,16 +1,20 @@
 // src/services/auth.js
-export async function login(email, password) {
-  // mock simples só pra dev
-  if (email && password) {
-    const role = email.toLowerCase().includes('admin') ? 'admin' : 'user'
-    localStorage.setItem('demo_token', 'token_exemplo')
-    localStorage.setItem('demo_role', role)
-    return { ok: true, role }
+import { setApiKey, setOrgId } from './api.js'
+
+// “login” aqui significa apenas registrar API Key e org_id localmente.
+export async function loginWithApiKey({ apiKey, orgId }) {
+  if (!apiKey || apiKey.length < 16) {
+    return { ok: false, error: 'API Key deve ter pelo menos 16 caracteres.' }
   }
-  return { ok: false }
+  if (!orgId) {
+    return { ok: false, error: 'org_id é obrigatório.' }
+  }
+  setApiKey(apiKey)
+  setOrgId(orgId)
+  return { ok: true }
 }
 
 export function logout() {
-  localStorage.removeItem('demo_token')
-  localStorage.removeItem('demo_role')
+  setApiKey('')
+  setOrgId('')
 }

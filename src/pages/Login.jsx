@@ -1,69 +1,36 @@
 // src/pages/Login.jsx
 import { useState } from 'react'
-import { login } from '../services/auth.js'
+import { loginWithApiKey } from '../services/auth.js'
 import '../styles/login.css'
-import logo from '../assets/logo.png' // garanta que o arquivo exista
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [orgId, setOrgId] = useState('')
+  const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState('')
 
   async function submit(e) {
     e.preventDefault()
     setError('')
-    const ok = await login(email, password)
+    const ok = await loginWithApiKey({ orgId, apiKey })
     if (ok.ok) {
       window.location.href = '/'
     } else {
-      setError('Credenciais inválidas')
+      setError(ok.error || 'Falha ao salvar credenciais')
     }
   }
 
   return (
-    <div className="login-wrap">
+    <div className="login-container">
       <form className="login-card" onSubmit={submit}>
-        {/* Logo + título */}
-        <img src={logo} alt="Logo QueryFlow" className="logo-img" />
-        <div className="logo-text">QueryFlow</div>
-        <p className="subtitle">Converse com sua plataforma e acelere seus fluxos.</p>
+        <h2>Entrar</h2>
+        <label>org_id</label>
+        <input value={orgId} onChange={e => setOrgId(e.target.value)} />
 
-        {/* E-mail */}
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          placeholder="voce@empresa.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          required
-        />
+        <label>API Key</label>
+        <input value={apiKey} onChange={e => setApiKey(e.target.value)} />
 
-        {/* Senha */}
-        <label htmlFor="password">Senha</label>
-        <input
-          id="password"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
-
-        {/* Erro */}
-        {error && <div className="error" role="alert">{error}</div>}
-
-        {/* Ações */}
-        <button className="btn-primary" type="submit">Entrar</button>
-        <button
-          type="button"
-          className="link"
-          onClick={() => (window.location.href = '/forgot')}
-        >
-          Esqueceu a senha?
-        </button>
+        {error && <div className="error">{error}</div>}
+        <button type="submit">Entrar</button>
       </form>
     </div>
   )
