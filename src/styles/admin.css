@@ -1,9 +1,0 @@
-.admin-header{
-  border-bottom: 1px solid var(--border);
-  padding: 14px 16px; background: var(--panel);
-}
-.admin-content{ padding: 16px; display: grid; gap: 16px; }
-.panel{
-  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
-  padding: 16px;
-}
