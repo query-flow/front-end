@@ -1,181 +1,139 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { loginUser, loginAdmin, persistTokens } from '@/lib/rotas';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
-import { Database, Loader2 } from 'lucide-react';
+// src/pages/Login.jsx
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../lib/api";
+import logo from "../assets/logo.png";
 
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('user');
+export default function Login() {
+  const [mode, setMode] = useState("user"); // "user" | "admin"
+  const [email, setEmail] = useState("voce@empresa.com");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!email || !password) {
-      toast.error('Por favor, preencha todos os campos');
-      return;
-    }
-
-    setIsLoading(true);
+    setError("");
 
     try {
-      let response;
-      
-      if (activeTab === 'admin') {
-        response = await loginAdmin(email, password);
+      const route = mode === "admin" ? "/auth/admin-login" : "/auth/login";
+      const res = await api.post(route, { email, password });
+
+      console.log("LOGIN RES:", res.data);
+      localStorage.setItem("auth_payload", JSON.stringify(res.data));
+
+      const {
+        access_token,
+        refresh_token,
+        org_id,
+        name,
+        full_name,
+        username,
+        email: emailFromAPI,
+      } = res.data;
+
+      if (access_token) {
+        localStorage.setItem("access_token", access_token);
       } else {
-        response = await loginUser(email, password);
+        const tokenAlt =
+          res.data.token ||
+          res.data.accessToken ||
+          res.data.jwt ||
+          res.data.authorization;
+        if (tokenAlt) localStorage.setItem("access_token", tokenAlt);
       }
 
-      // Persistir tokens e org_id
-      persistTokens(
-        response.access_token, 
-        response.refresh_token,
-        response.org_id
-      );
+      if (refresh_token) localStorage.setItem("refresh_token", refresh_token);
+      if (org_id) localStorage.setItem("org_id", org_id);
 
-      toast.success('Login realizado com sucesso!');
-      navigate('/chat');
-    } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Erro ao fazer login';
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
+      const bestName =
+        name || full_name || username || emailFromAPI || email || "usuário";
+      localStorage.setItem("user_name", bestName);
+
+      navigate("/chat");
+    } catch (err) {
+      console.error(err);
+      if (err.response?.status === 401) {
+        setError("Login ou senha inválidos.");
+      } else {
+        setError("Erro ao tentar logar. Veja o console.");
+      }
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/30 p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent mb-4 shadow-elegant">
-            <Database className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            QueryFlow
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Análise de dados em linguagem natural
-          </p>
+    <div className="login-page">
+      <div className="login-card">
+        {/* logo foto em ../assets/logo.png */}
+        <div className="login-logo">
+          <img src={logo} alt="Logo" />
+        </div>
+        <div className="login-title">QueryFlow</div>
+        <div className="login-subtitle">
+          Converse com sua base de dados e acelere seus fluxos.
         </div>
 
-        <Card className="shadow-card border-border/50">
-          <CardHeader>
-            <CardTitle>Bem-vindo</CardTitle>
-            <CardDescription>
-              Entre com suas credenciais para acessar
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="user">Usuário</TabsTrigger>
-                <TabsTrigger value="admin">Admin</TabsTrigger>
-              </TabsList>
+        <div className="login-mode-toggle">
+          <button
+            type="button"
+            onClick={() => setMode("user")}
+            className={
+              "login-mode-btn " +
+              (mode === "user" ? "login-mode-btn--active" : "")
+            }
+          >
+            Usuário
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("admin")}
+            className={
+              "login-mode-btn " +
+              (mode === "admin" ? "login-mode-btn--active" : "")
+            }
+          >
+            Admin
+          </button>
+        </div>
 
-              <TabsContent value="user">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="user-email">Email</Label>
-                    <Input
-                      id="user-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={isLoading}
-                      className="transition-all duration-200 focus:shadow-elegant"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="user-password">Senha</Label>
-                    <Input
-                      id="user-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading}
-                      className="transition-all duration-200 focus:shadow-elegant"
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Entrando...
-                      </>
-                    ) : (
-                      'Entrar'
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <div className="login-label">Email</div>
+            <input
+              className="login-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder="voce@empresa.com"
+            />
+          </div>
+          <div>
+            <div className="login-label">Senha</div>
+            <input
+              className="login-input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder="••••••••"
+            />
+          </div>
+          {error && <div className="login-error">{error}</div>}
+          <button type="submit" className="login-button">
+            Entrar
+          </button>
+        </form>
 
-              <TabsContent value="admin">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-email">Email</Label>
-                    <Input
-                      id="admin-email"
-                      type="email"
-                      placeholder="admin@plataforma.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={isLoading}
-                      className="transition-all duration-200 focus:shadow-elegant"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-password">Senha</Label>
-                    <Input
-                      id="admin-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading}
-                      className="transition-all duration-200 focus:shadow-elegant"
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Entrando...
-                      </>
-                    ) : (
-                      'Entrar como Admin'
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          QueryFlow v2.0 - Natural Language to SQL
-        </p>
+        <div
+          style={{
+            marginTop: 14,
+            fontSize: 12,
+            textAlign: "center",
+            color: "#6b7280",
+          }}
+        >
+          Esqueceu a senha?
+        </div>
       </div>
     </div>
   );
-};
-
-export default Login;
+}

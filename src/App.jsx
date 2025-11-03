@@ -1,52 +1,39 @@
-import { useEffect, useState } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login";
-import Chat from "./pages/Chat";
-import NotFound from "./pages/NotFound";
-import { getAccessToken } from "./lib/rotas";
+// src/App.jsx
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import Login from "./pages/Login.jsx";
+import RegisterOrg from "./pages/RegisterOrg.jsx";
+import Chat from "./pages/Chat.jsx";
 
-const queryClient = new QueryClient();
-
-const ProtectedRoute = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
-
-  useEffect(() => {
-    const token = getAccessToken();
-    setIsAuthenticated(!!token);
-  }, []);
-
-  if (isAuthenticated === null) {
-    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
+function RequireAuth({ children }) {
+  const token = localStorage.getItem("access_token");
+  const location = useLocation();
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
+  return children;
+}
 
-  return isAuthenticated ? children : <Navigate to="/" />;
-};
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner position="top-right" />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route 
-            path="/chat" 
-            element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/org"
+        element={
+          <RequireAuth>
+            <RegisterOrg />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/chat"
+        element={
+          <RequireAuth>
+            <Chat />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/chat" replace />} />
+    </Routes>
+  );
+}
