@@ -3,6 +3,10 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Login from "./pages/Login.jsx";
 import RegisterOrg from "./pages/RegisterOrg.jsx";
 import Chat from "./pages/Chat.jsx";
+import UploadDocument from "./pages/UploadDocument.jsx";
+import AdminOrg from "./pages/AdminOrg.jsx";
+
+
 
 function RequireAuth({ children }) {
   const token = localStorage.getItem("access_token");
@@ -34,6 +38,25 @@ export default function App() {
         }
       />
       <Route path="*" element={<Navigate to="/chat" replace />} />
+
+      <Route
+        path="/arquivo"
+        element={
+          <RequireAuth>
+            <UploadDocument />
+          </RequireAuth>
+        }
+      />
+      {/* AQUI: página de admin na rota /org */}
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth>
+            <AdminOrg />
+          </RequireAuth>
+        }
+      />
+
     </Routes>
   );
 }

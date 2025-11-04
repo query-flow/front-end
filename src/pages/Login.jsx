@@ -5,66 +5,138 @@ import api from "../lib/api";
 import logo from "../assets/logo.png";
 
 export default function Login() {
-  const [mode, setMode] = useState("user"); // "user" | "admin"
   const [email, setEmail] = useState("voce@empresa.com");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const saveBaseAuth = (data) => {
+    localStorage.setItem("auth_payload", JSON.stringify(data));
+
+    const token =
+      data.access_token ||
+      data.token ||
+      data.accessToken ||
+      data.jwt ||
+      data.authorization;
+
+    if (token) {
+      localStorage.setItem("access_token", token);
+    }
+
+    if (data.refresh_token) {
+      localStorage.setItem("refresh_token", data.refresh_token);
+    }
+
+    // org_id pode vir direto ou dentro de org
+    const orgId = data.org_id || data.org?.id;
+    if (orgId) {
+      localStorage.setItem("org_id", orgId);
+    }
+
+    const baseName =
+      data.user?.name ||
+      data.name ||
+      data.full_name ||
+      data.username ||
+      data.email ||
+      email ||
+      "usuário";
+
+    localStorage.setItem("user_name", baseName);
+
+    if (data.org?.name) {
+      localStorage.setItem("org_name", data.org.name);
+    }
+  };
+
+  // usa /members pra descobrir org_name, role_in_org e nome final
+  const hydrateFromMembers = async (data) => {
+    try {
+      const userId =
+        data.user?.id || data.user_id || data.id || null;
+
+      if (!userId) {
+        console.warn("Não encontrei user_id no payload de login.");
+        return;
+      }
+
+      const res = await api.get("/members");
+      const { org_id, org_name, members } = res.data || {};
+
+      if (org_id) {
+        localStorage.setItem("org_id", org_id);
+      }
+      if (org_name) {
+        localStorage.setItem("org_name", org_name);
+      }
+
+      if (Array.isArray(members)) {
+        const me = members.find((m) => m.user_id === userId);
+        if (me) {
+          if (me.name) {
+            localStorage.setItem("user_name", me.name);
+          }
+          if (me.role_in_org) {
+            localStorage.setItem("role_in_org", me.role_in_org);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Não consegui enriquecer dados com /members", e);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
-      const route = mode === "admin" ? "/auth/admin-login" : "/auth/login";
-      const res = await api.post(route, { email, password });
+      // primeiro tenta login normal
+      const res = await api.post("/auth/login", { email, password });
+      console.log("LOGIN /auth/login:", res.data);
 
-      console.log("LOGIN RES:", res.data);
-      localStorage.setItem("auth_payload", JSON.stringify(res.data));
+      saveBaseAuth(res.data);
+      await hydrateFromMembers(res.data);
 
-      const {
-        access_token,
-        refresh_token,
-        org_id,
-        name,
-        full_name,
-        username,
-        email: emailFromAPI,
-      } = res.data;
-
-      if (access_token) {
-        localStorage.setItem("access_token", access_token);
-      } else {
-        const tokenAlt =
-          res.data.token ||
-          res.data.accessToken ||
-          res.data.jwt ||
-          res.data.authorization;
-        if (tokenAlt) localStorage.setItem("access_token", tokenAlt);
-      }
-
-      if (refresh_token) localStorage.setItem("refresh_token", refresh_token);
-      if (org_id) localStorage.setItem("org_id", org_id);
-
-      const bestName =
-        name || full_name || username || emailFromAPI || email || "usuário";
-      localStorage.setItem("user_name", bestName);
-
+      // todo mundo (member ou org_admin) começa no chat
       navigate("/chat");
-    } catch (err) {
-      console.error(err);
-      if (err.response?.status === 401) {
-        setError("Login ou senha inválidos.");
-      } else {
-        setError("Erro ao tentar logar. Veja o console.");
+    } catch (errUser) {
+      console.warn("Falha em /auth/login, tentando /auth/admin-login…", errUser);
+
+      try {
+        const resAdmin = await api.post("/auth/admin-login", {
+          email,
+          password,
+        });
+        console.log("LOGIN /auth/admin-login:", resAdmin.data);
+
+        saveBaseAuth(resAdmin.data);
+        localStorage.setItem("role_in_org", "org_admin"); // trata como admin global
+
+        navigate("/org"); // platform admin cai direto na página admin
+      } catch (errAdmin) {
+        console.error("Falha também em /auth/admin-login", errAdmin);
+
+        const statusUser = errUser?.response?.status;
+        const statusAdmin = errAdmin?.response?.status;
+
+        if (statusUser === 401 || statusAdmin === 401) {
+          setError("Login ou senha inválidos.");
+        } else {
+          setError("Erro ao tentar logar. Veja o console.");
+        }
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="login-page">
       <div className="login-card">
-        {/* logo foto em ../assets/logo.png */}
         <div className="login-logo">
           <img src={logo} alt="Logo" />
         </div>
@@ -73,30 +145,10 @@ export default function Login() {
           Converse com sua base de dados e acelere seus fluxos.
         </div>
 
-        <div className="login-mode-toggle">
-          <button
-            type="button"
-            onClick={() => setMode("user")}
-            className={
-              "login-mode-btn " +
-              (mode === "user" ? "login-mode-btn--active" : "")
-            }
-          >
-            Usuário
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("admin")}
-            className={
-              "login-mode-btn " +
-              (mode === "admin" ? "login-mode-btn--active" : "")
-            }
-          >
-            Admin
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: 10 }}
+        >
           <div>
             <div className="login-label">Email</div>
             <input
@@ -118,8 +170,8 @@ export default function Login() {
             />
           </div>
           {error && <div className="login-error">{error}</div>}
-          <button type="submit" className="login-button">
-            Entrar
+          <button type="submit" className="login-button" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
