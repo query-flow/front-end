@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import logo from "../assets/logo.png";
+import "../styles/login.css";
 
 export default function Login() {
   const [email, setEmail] = useState("voce@empresa.com");
@@ -104,7 +105,10 @@ export default function Login() {
       // todo mundo (member ou org_admin) começa no chat
       navigate("/chat");
     } catch (errUser) {
-      console.warn("Falha em /auth/login, tentando /auth/admin-login…", errUser);
+      console.warn(
+        "Falha em /auth/login, tentando /auth/admin-login…",
+        errUser
+      );
 
       try {
         const resAdmin = await api.post("/auth/admin-login", {
@@ -147,7 +151,7 @@ export default function Login() {
 
         <form
           onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: 10 }}
+          className="login-form"
         >
           <div>
             <div className="login-label">Email</div>
@@ -175,14 +179,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div
-          style={{
-            marginTop: 14,
-            fontSize: 12,
-            textAlign: "center",
-            color: "#6b7280",
-          }}
-        >
+        <div className="login-footer-link">
           Esqueceu a senha?
         </div>
       </div>
