@@ -26,6 +26,11 @@ export default function AdminOrg() {
   const [inviteStatus, setInviteStatus] = useState(null); // {type, message}
   const [actionStatus, setActionStatus] = useState(null); // mensagens de update/remove
 
+  // ======= NOVO: ESTADO PARA ARQUIVOS =======
+  const [documents, setDocuments] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [docsStatus, setDocsStatus] = useState(null); // {type, message}
+
   const userName = localStorage.getItem("user_name") || "admin";
 
   const fetchMembers = async () => {
@@ -68,8 +73,41 @@ export default function AdminOrg() {
     }
   };
 
+  // ======= NOVO: BUSCAR DOCUMENTOS =======
+  const fetchDocuments = async () => {
+    setLoadingDocs(true);
+    setDocsStatus(null);
+
+    try {
+      // GET /documents  (ajuste se seu backend usar outro path)
+      const res = await api.get("/documents");
+      const data = res.data || {};
+
+      // tenta pegar por data.documents ou array direto
+      let list = [];
+      if (Array.isArray(data.documents)) {
+        list = data.documents;
+      } else if (Array.isArray(data)) {
+        list = data;
+      } else {
+        list = [];
+      }
+
+      setDocuments(list);
+    } catch (err) {
+      console.error(err);
+      setDocsStatus({
+        type: "error",
+        message: "Erro ao listar arquivos. Veja o console.",
+      });
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
   useEffect(() => {
     fetchMembers();
+    fetchDocuments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -170,6 +208,44 @@ export default function AdminOrg() {
     }
   };
 
+  // ======= NOVO: REMOVER DOCUMENTO =======
+  const handleDeleteDocument = async (doc) => {
+    const docId = doc.id || doc.doc_id || doc.document_id;
+    if (!docId) return;
+
+    const ok = window.confirm(
+      "Remover este arquivo da base? Essa ação não pode ser desfeita."
+    );
+    if (!ok) return;
+
+    setDocsStatus(null);
+    try {
+      // DELETE /documents/{id}  (ajuste se o path for diferente)
+      await api.delete(`/documents/${docId}`);
+
+      setDocuments((prev) =>
+        prev.filter(
+          (d) =>
+            (d.id || d.doc_id || d.document_id) !== docId
+        )
+      );
+
+      setDocsStatus({
+        type: "success",
+        message: "Arquivo removido com sucesso.",
+      });
+    } catch (err) {
+      console.error(err);
+      let message = "Erro ao remover arquivo.";
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        message +=
+          " " + (typeof detail === "string" ? detail : JSON.stringify(detail));
+      }
+      setDocsStatus({ type: "error", message });
+    }
+  };
+
   const handleGoToChat = () => {
     navigate("/chat");
   };
@@ -185,8 +261,8 @@ export default function AdminOrg() {
           <div>
             <h1>Administração da Organização</h1>
             <p>
-              Gerencie membros da sua organização e acesse o chat para fazer
-              consultas.
+              Gerencie membros da sua organização, arquivos da base e acesse o
+              chat para fazer consultas.
             </p>
           </div>
           <div className="admin-header-right">
@@ -384,7 +460,7 @@ export default function AdminOrg() {
             </section>
           </div>
 
-          {/* coluna direita: atalhos pro chat/documentos */}
+          {/* coluna direita: atalhos + arquivos */}
           <div className="admin-column admin-column--side">
             <section className="admin-section">
               <div className="admin-section-header">
@@ -413,6 +489,102 @@ export default function AdminOrg() {
                 O chat não guarda histórico: cada pergunta é independente e
                 baseada nos dados configurados para esta organização.
               </p>
+            </section>
+
+            {/* ======= NOVA SEÇÃO: ARQUIVOS ======= */}
+            <section className="admin-section">
+              <div className="admin-section-header">
+                <h2>Arquivos na base</h2>
+                <p>
+                  Veja os arquivos já enviados e apague o que não precisar mais.
+                </p>
+              </div>
+
+              <div className="admin-members-header">
+                <button
+                  type="button"
+                  className="admin-btn-ghost"
+                  onClick={fetchDocuments}
+                  disabled={loadingDocs}
+                >
+                  {loadingDocs ? "Carregando..." : "Atualizar arquivos"}
+                </button>
+              </div>
+
+              {docsStatus && (
+                <div
+                  className={
+                    "admin-status " +
+                    (docsStatus.type === "success"
+                      ? "admin-status--success"
+                      : "admin-status--error")
+                  }
+                >
+                  {docsStatus.message}
+                </div>
+              )}
+
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Título</th>
+                      <th>ID</th>
+                      <th>Criado em</th>
+                      <th style={{ width: 120 }}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documents.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="admin-table-empty">
+                          Nenhum arquivo encontrado.
+                        </td>
+                      </tr>
+                    )}
+
+                    {documents.map((doc, idx) => {
+                      const id =
+                        doc.id || doc.doc_id || doc.document_id || `#${idx + 1}`;
+                      const title =
+                        doc.title ||
+                        doc.doc_title ||
+                        doc.name ||
+                        "(sem título)";
+                      const createdRaw =
+                        doc.created_at ||
+                        doc.ingested_at ||
+                        doc.created ||
+                        "";
+                      const created =
+                        createdRaw && !isNaN(Date.parse(createdRaw))
+                          ? new Date(createdRaw).toLocaleString()
+                          : createdRaw || "—";
+
+                      return (
+                        <tr key={id}>
+                          <td>{title}</td>
+                          <td style={{ fontSize: 12, color: "#9ca3af" }}>
+                            {id}
+                          </td>
+                          <td>{created}</td>
+                          <td>
+                            <div className="admin-table-actions">
+                              <button
+                                type="button"
+                                className="admin-btn-small admin-btn-danger"
+                                onClick={() => handleDeleteDocument(doc)}
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         </div>
