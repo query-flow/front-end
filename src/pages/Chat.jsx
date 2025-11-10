@@ -1,6 +1,6 @@
 // src/pages/Chat.jsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../lib/api";
 import ChatLayout from "../components/ChatLayout.jsx";
 import MessageBubble from "../components/MessageBubble.jsx";
@@ -43,6 +43,7 @@ function LoadingBubble() {
 
 export default function Chat() {
   const navigate = useNavigate();
+  const { conversationId } = useParams(); // Get conversation ID from URL
 
   const rawPayload = localStorage.getItem("auth_payload");
   const parsedPayload = rawPayload ? JSON.parse(rawPayload) : null;
@@ -72,14 +73,18 @@ export default function Chat() {
   const [orgId] = useState(initialOrgId || "");
 
   const papelLegivel =
-    roleInOrg === "org_admin" ? "Administrador" : "Usuário";
+    roleInOrg === "admin" ? "Administrador" : "Usuário";
 
   const bemVindoNome = (userName || "usuário").toUpperCase();
 
+  // Conversation state
+  const [conversationTitle, setConversationTitle] = useState("");
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: `BEM VINDO, ${bemVindoNome}! Cada pergunta aqui é tratada de forma independente e não é armazenada.`,
+      content: conversationId
+        ? "Carregando histórico da conversa..."
+        : `BEM VINDO, ${bemVindoNome}! ${conversationId ? "Continue sua conversa" : "Cada pergunta aqui é tratada de forma independente"}.`,
     },
   ]);
   const [input, setInput] = useState("");
@@ -87,6 +92,44 @@ export default function Chat() {
 
   const [helpTopic, setHelpTopic] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Load conversation history if conversationId exists
+  useEffect(() => {
+    if (conversationId) {
+      loadConversation();
+    }
+  }, [conversationId]);
+
+  const loadConversation = async () => {
+    try {
+      const res = await api.get(`/conversations/${conversationId}`);
+      const { conversation, messages: historyMessages } = res.data;
+
+      setConversationTitle(conversation.title || "Conversa sem título");
+
+      // Convert backend messages to frontend format
+      const formattedMessages = historyMessages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+        // If assistant message has SQL results, we could reconstruct table here
+        metadata: {
+          sql: msg.sql_executed,
+          duration_ms: msg.duration_ms,
+          row_count: msg.row_count,
+        },
+      }));
+
+      setMessages(formattedMessages);
+    } catch (err) {
+      console.error("Erro ao carregar conversa:", err);
+      setMessages([
+        {
+          role: "assistant",
+          content: "❌ Erro ao carregar histórico da conversa. Veja o console.",
+        },
+      ]);
+    }
+  };
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -107,8 +150,16 @@ export default function Chat() {
         enrich: false,
       };
 
-      const res = await api.post("/perguntar_org", body);
-      console.log("RESPOSTA /perguntar_org:", res.data);
+      let res;
+      if (conversationId) {
+        // Use conversation-specific endpoint
+        res = await api.post(`/conversations/${conversationId}/ask`, body);
+        console.log(`RESPOSTA /conversations/${conversationId}/ask:`, res.data);
+      } else {
+        // Use regular endpoint
+        res = await api.post("/perguntar_org", body);
+        console.log("RESPOSTA /perguntar_org:", res.data);
+      }
 
       // ===== TRATAMENTO ESPECIAL: schema_error =====
       if (res.data?.status === "schema_error") {
@@ -148,26 +199,29 @@ export default function Chat() {
         ]);
       } else {
         // ===== FLUXO NORMAL: resultado da consulta =====
-        const { resultado, insights } = res.data;
+        const { status, columns, rows, insights, metadata } = res.data;
 
-        if (resultado && resultado.colunas && resultado.dados) {
+        if (status === "success" && columns && rows) {
           const assistantMsg = {
             role: "assistant",
             content: "Aqui estão os resultados desta pergunta:",
             table: {
-              columns: resultado.colunas,
-              rows: resultado.dados,
+              columns,
+              rows,
             },
+            metadata, // Incluir metadata para futura exibição (query time, etc)
           };
 
           setMessages((prev) => [...prev, assistantMsg]);
 
-          if (insights) {
+          // Exibir insights se disponível
+          if (insights && insights.summary) {
             setMessages((prev) => [
               ...prev,
               {
                 role: "assistant",
-                content: `Insights: ${JSON.stringify(insights)}`,
+                content: insights.summary,
+                chart: insights.chart, // Se houver gráfico
               },
             ]);
           }
@@ -220,7 +274,7 @@ export default function Chat() {
   };
 
   const handleGoAdmin = () => {
-    if (roleInOrg === "org_admin") {
+    if (roleInOrg === "admin") {
       navigate("/admin");
     } else {
       alert("Você não é administrador desta organização.");
@@ -276,6 +330,58 @@ export default function Chat() {
               </div>
 
               <div className="chat-sidebar-help-list">
+                {conversationId ? (
+                  <>
+                    <div className="chat-info-box" style={{
+                      background: "#1e293b",
+                      padding: "0.75rem",
+                      borderRadius: "0.5rem",
+                      marginBottom: "1rem",
+                      border: "1px solid #3b82f6"
+                    }}>
+                      <div style={{ color: "#3b82f6", fontWeight: "600", marginBottom: "0.25rem" }}>
+                        💬 Modo Conversa
+                      </div>
+                      <div style={{ fontSize: "0.875rem", color: "#94a3b8" }}>
+                        Suas perguntas têm contexto e são salvas automaticamente.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="chat-help-item"
+                      onClick={() => navigate("/chat")}
+                    >
+                      <span className="chat-help-text">Ir para Chat Rápido</span>
+                      <span className="chat-help-icon-right">⚡</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="chat-info-box" style={{
+                      background: "#1e293b",
+                      padding: "0.75rem",
+                      borderRadius: "0.5rem",
+                      marginBottom: "1rem",
+                      border: "1px solid #64748b"
+                    }}>
+                      <div style={{ color: "#94a3b8", fontWeight: "600", marginBottom: "0.25rem" }}>
+                        ⚡ Chat Rápido
+                      </div>
+                      <div style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                        Perguntas independentes sem histórico.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="chat-help-item"
+                      onClick={() => navigate("/conversations")}
+                    >
+                      <span className="chat-help-text">Ir para Conversas Salvas</span>
+                      <span className="chat-help-icon-right">📝</span>
+                    </button>
+                  </>
+                )}
+
                 <button
                   type="button"
                   className="chat-help-item chat-help-main"
@@ -283,15 +389,6 @@ export default function Chat() {
                 >
                   <span className="chat-help-text">Como funciona</span>
                   <span className="chat-help-icon-right">⟳</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="chat-help-item"
-                  onClick={() => setHelpTopic("conversas")}
-                >
-                  <span className="chat-help-text">Conversas não salvas</span>
-                  <span className="chat-help-icon-right">💡</span>
                 </button>
 
                 <button
@@ -309,7 +406,7 @@ export default function Chat() {
                   onClick={() => setHelpTopic("respostas")}
                 >
                   <span className="chat-help-text">
-                    Respostas baseadas apenas na pergunta atual.
+                    Respostas baseadas {conversationId ? "no contexto" : "apenas na pergunta atual"}
                   </span>
                   <span className="chat-help-icon-right">💬</span>
                 </button>
@@ -338,11 +435,26 @@ export default function Chat() {
       /* ===== HEADER ===== */
       header={
         <div className="chat-header-row">
-          <div className="chat-header-left">{orgName}</div>
+          <div className="chat-header-left">
+            {orgName}
+            {conversationId && conversationTitle && (
+              <span style={{ marginLeft: "1rem", fontSize: "0.9rem", color: "#94a3b8" }}>
+                → {conversationTitle}
+              </span>
+            )}
+          </div>
 
           <div className="chat-header-center">Chat</div>
 
           <div className="chat-header-right">
+            <button
+              className="chat-header-logout"
+              type="button"
+              onClick={() => navigate("/conversations")}
+              title="Ver histórico de conversas"
+            >
+              Histórico
+            </button>
             <div className="chat-header-user">
               <span>
                 {userName} - {papelLegivel}

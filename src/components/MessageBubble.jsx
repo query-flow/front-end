@@ -30,8 +30,8 @@ export default function MessageBubble({ role, content, table }) {
               <tbody>
                 {table.rows.map((row, idx) => (
                   <tr key={idx}>
-                    {table.columns.map((col) => (
-                      <td key={col}>{row[col]}</td>
+                    {table.columns.map((col, colIdx) => (
+                      <td key={col}>{row[colIdx]}</td>
                     ))}
                   </tr>
                 ))}

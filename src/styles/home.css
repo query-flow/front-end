@@ -1,0 +1,26 @@
+/* Área principal do chat (Home) */
+.chat { display:flex; flex-direction: column; height: 100%; }
+.chat-messages{
+  flex:1;
+  overflow:auto;
+  padding: 20px;
+  display: flex;              /* << antes era grid */
+  flex-direction: column;     /* empilha mensagens */
+  gap: 10px;
+  background: radial-gradient(1200px 1200px at 80% -10%, #11131f, transparent 60%);
+}
+
+.chat-empty{
+  margin: auto; text-align: center;
+}
+.chat-empty h1{ margin: 0 0 8px 0; }
+.chat-composer{
+  border-top: 1px solid var(--border);
+  padding: 10px; display: flex; gap: 10px; background: var(--panel);
+}
+.chat-composer textarea{
+  flex:1; background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
+  resize: vertical; min-height: 44px; max-height: 160px;
+}
+.hint{ color: var(--muted); font-size: 11px; padding: 4px 16px 12px; }

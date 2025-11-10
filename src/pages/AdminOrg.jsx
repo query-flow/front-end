@@ -159,11 +159,10 @@ export default function AdminOrg() {
   };
 
   const handleChangeRole = async (userId, newRole) => {
-    if (!orgId) return;
     setActionStatus(null);
     try {
-      // PUT /members/{org_id}/{user_id}
-      await api.put(`/members/${orgId}/${userId}`, {
+      // PUT /members/{user_id}
+      await api.put(`/members/${userId}`, {
         role_in_org: newRole,
       });
 
@@ -186,13 +185,12 @@ export default function AdminOrg() {
   };
 
   const handleRemove = async (userId) => {
-    if (!orgId) return;
     if (!window.confirm("Remover este membro da organização?")) return;
 
     setActionStatus(null);
     try {
-      // DELETE /members/{org_id}/{user_id}
-      await api.delete(`/members/${orgId}/${userId}`);
+      // DELETE /members/{user_id}
+      await api.delete(`/members/${userId}`);
 
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
       setActionStatus({
@@ -324,7 +322,7 @@ export default function AdminOrg() {
                     onChange={(e) => setInviteRole(e.target.value)}
                   >
                     <option value="member">Membro</option>
-                    <option value="org_admin">Admin da organização</option>
+                    <option value="admin">Admin da organização</option>
                   </select>
                 </div>
 
@@ -410,19 +408,19 @@ export default function AdminOrg() {
                           <span
                             className={
                               "admin-badge " +
-                              (m.role_in_org === "org_admin"
+                              (m.role_in_org === "admin"
                                 ? "admin-badge--admin"
                                 : "admin-badge--member")
                             }
                           >
-                            {m.role_in_org === "org_admin"
+                            {m.role_in_org === "admin"
                               ? "Admin"
                               : "Membro"}
                           </span>
                         </td>
                         <td>
                           <div className="admin-table-actions">
-                            {m.role_in_org === "org_admin" ? (
+                            {m.role_in_org === "admin" ? (
                               <button
                                 type="button"
                                 className="admin-btn-small"
@@ -437,7 +435,7 @@ export default function AdminOrg() {
                                 type="button"
                                 className="admin-btn-small"
                                 onClick={() =>
-                                  handleChangeRole(m.user_id, "org_admin")
+                                  handleChangeRole(m.user_id, "admin")
                                 }
                               >
                                 Tornar admin

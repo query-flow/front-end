@@ -95,43 +95,24 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // primeiro tenta login normal
       const res = await api.post("/auth/login", { email, password });
       console.log("LOGIN /auth/login:", res.data);
 
       saveBaseAuth(res.data);
       await hydrateFromMembers(res.data);
 
-      // todo mundo (member ou org_admin) começa no chat
+      // Navega para /chat - todos os usuários começam no chat
       navigate("/chat");
-    } catch (errUser) {
-      console.warn(
-        "Falha em /auth/login, tentando /auth/admin-login…",
-        errUser
-      );
+    } catch (err) {
+      console.error("Erro ao fazer login:", err);
 
-      try {
-        const resAdmin = await api.post("/auth/admin-login", {
-          email,
-          password,
-        });
-        console.log("LOGIN /auth/admin-login:", resAdmin.data);
-
-        saveBaseAuth(resAdmin.data);
-        localStorage.setItem("role_in_org", "org_admin"); // trata como admin global
-
-        navigate("/org"); // platform admin cai direto na página admin
-      } catch (errAdmin) {
-        console.error("Falha também em /auth/admin-login", errAdmin);
-
-        const statusUser = errUser?.response?.status;
-        const statusAdmin = errAdmin?.response?.status;
-
-        if (statusUser === 401 || statusAdmin === 401) {
-          setError("Login ou senha inválidos.");
-        } else {
-          setError("Erro ao tentar logar. Veja o console.");
-        }
+      const status = err?.response?.status;
+      if (status === 401) {
+        setError("Login ou senha inválidos.");
+      } else if (status === 403) {
+        setError("Usuário não está ativo. Verifique seu email ou contate o administrador.");
+      } else {
+        setError(err?.response?.data?.detail || "Erro ao tentar logar. Tente novamente.");
       }
     } finally {
       setLoading(false);
@@ -180,7 +161,13 @@ export default function Login() {
         </form>
 
         <div className="login-footer-link">
-          Esqueceu a senha?
+          Não tem uma conta?{" "}
+          <span
+            onClick={() => navigate("/register")}
+            style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "600" }}
+          >
+            Criar conta
+          </span>
         </div>
       </div>
     </div>

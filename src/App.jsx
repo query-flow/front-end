@@ -5,6 +5,7 @@ import RegisterOrg from "./pages/RegisterOrg.jsx";
 import Chat from "./pages/Chat.jsx";
 import UploadDocument from "./pages/UploadDocument.jsx";
 import AdminOrg from "./pages/AdminOrg.jsx";
+import Conversations from "./pages/Conversations.jsx";
 
 
 
@@ -21,19 +22,28 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route
-        path="/org"
-        element={
-          <RequireAuth>
-            <RegisterOrg />
-          </RequireAuth>
-        }
-      />
+      <Route path="/register" element={<RegisterOrg />} />
       <Route
         path="/chat"
         element={
           <RequireAuth>
             <Chat />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/chat/:conversationId"
+        element={
+          <RequireAuth>
+            <Chat />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/conversations"
+        element={
+          <RequireAuth>
+            <Conversations />
           </RequireAuth>
         }
       />

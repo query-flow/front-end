@@ -1,0 +1,152 @@
+/* ================================
+   Sidebar (layout e estrutura)
+   ================================ */
+
+/* Sidebar raiz: ocupa a viewport e fica “presa” no topo */
+.sb{
+  width: 280px;
+  height: 100vh;                 /* garante altura total */
+  position: sticky;              /* sidebar fixa quando o main rola */
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, #0f1016, #0b0b0f);
+}
+
+/* Topo: branding + botão “Novo chat” */
+.sb-header{
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 12px;
+}
+
+/* ================================
+   Lista de conversas (scroll)
+   ================================ */
+
+/* A lista ocupa o espaço entre header e footer e tem scroll só nela */
+.sb-list{
+  flex: 1;                       /* ocupa todo espaço livre */
+  overflow-y: auto;              /* scroll apenas aqui */
+  overscroll-behavior: contain;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+
+  /* Altura padronizada para TODOS os itens (mesmo tamanho) */
+  grid-auto-rows: 72px;          /* ajuste fino: 64~80px funciona bem */
+}
+
+/* Scrollbar (opcional: visual mais clean) */
+.sb-list::-webkit-scrollbar{ width: 8px; }
+.sb-list::-webkit-scrollbar-thumb{
+  background: #2a2d3f; border-radius: 8px;
+}
+.sb-list::-webkit-scrollbar-track{ background: transparent; }
+
+/* ================================
+   Item de conversa (card)
+   ================================ */
+
+/* Cada item agora é um flex container: conteúdo + botão excluir */
+.sb-item{
+  width: 100%;
+  height: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+/* Conteúdo principal do card (clicável) */
+.sb-item-main{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Botão excluir */
+.sb-item-delete{
+  width: 32px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.sb-item-delete:hover{
+  color: #ff6b6b;
+  background: rgba(255,255,255,0.05);
+}
+
+/* Título sempre em uma linha */
+.sb-item-title{
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Preview em uma linha (texto da última mensagem) */
+.sb-item-preview{
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* Data sempre “grudada” na base do card */
+.sb-item-date{
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: auto;              /* empurra a data para o rodapé do item */
+}
+
+/* ================================
+   Rodapé fixo (Admin + Sair)
+   ================================ */
+
+.sb-footer{
+  margin-top: auto;              /* cola o footer no final da coluna */
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 8px;
+  background: linear-gradient(180deg, #0f1016, #0b0b0f);
+}
+
+/* ================================
+   Branding no topo
+   ================================ */
+
+.sb-brand{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sb-logo{
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+.sb-brand-text{ line-height: 1.1; }
+.sb-brand-name{ font-weight: 700; }
+.sb-brand-sub{ font-size: 11px; color: var(--muted); }
+
+/* Botão “Novo chat” ocupa a largura toda */
+.sb-new{ width: 100%; }
