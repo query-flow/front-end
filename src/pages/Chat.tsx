@@ -13,6 +13,7 @@ import { ChatEmptyState } from '@/components/chat/ChatEmptyState';
 import { FollowUpPanel } from '@/components/chat/FollowUpPanel';
 import { LoadingStages } from '@/components/LoadingStages';
 import { useQueryStream } from '@/hooks/useQueryStream';
+import { ChartConfig } from '@/components/charts/SimpleChart';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -29,6 +30,7 @@ interface Message {
       base64: string;
     };
   };
+  chartConfig?: ChartConfig;
   suggestedQuestions?: string[];
 }
 
@@ -54,7 +56,7 @@ export default function Chat() {
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleStreamComplete = useCallback((result: any) => {
-    console.log('[Chat] Stream completed', { result, hasResult: !!result, status: result?.status });
+    console.log('[Chat] Stream completed', { result, hasResult: !!result, status: result?.status, hasChartConfig: !!result?.chart_config });
     if (result && result.status === 'success') {
       const assistantMessage: Message = {
         role: 'assistant',
@@ -62,6 +64,7 @@ export default function Chat() {
         sql: result.sql,
         table: result.columns && result.rows ? { columns: result.columns, rows: result.rows } : undefined,
         insights: result.insights,
+        chartConfig: result.chart_config,
         suggestedQuestions: result.metadata?.suggested_questions,
       };
       setMessages(prev => [...prev, assistantMessage]);
@@ -85,7 +88,7 @@ export default function Chat() {
   const streamState = useQueryStream(
     currentQuestion,
     accessToken || '',
-    100,
+    10,
     true,
     {
       enabled: useStreaming && !!currentQuestion && !conversationId,
@@ -142,6 +145,7 @@ export default function Chat() {
             sql: msg.sql_executed,
             table: msg.table_data,
             insights: msg.insights,
+            chartConfig: msg.chart_config,
           };
         });
         console.log('[Chat] Loaded messages:', loadedMessages);
@@ -207,6 +211,7 @@ export default function Chat() {
             sql: message.sql,
             table_data: message.table,
             insights: message.insights,
+            chart_config: message.chartConfig,
           }),
         });
 
@@ -281,7 +286,7 @@ export default function Chat() {
         },
         body: JSON.stringify({
           pergunta: input,
-          max_linhas: 100,
+          max_linhas: 10,
           enrich: true,
         }),
       });
@@ -296,6 +301,7 @@ export default function Chat() {
             sql: data.sql,
             table: data.columns && data.rows ? { columns: data.columns, rows: data.rows } : undefined,
             insights: data.insights,
+            chartConfig: data.chart_config,
             suggestedQuestions: data.suggested_questions,
           };
           setMessages(prev => [...prev, assistantMessage]);

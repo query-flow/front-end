@@ -41,7 +41,7 @@ interface UseQueryStreamOptions {
 export const useQueryStream = (
   question: string,
   accessToken: string,
-  maxLines: number = 100,
+  maxLines: number = 10,
   enrich: boolean = true,
   options: UseQueryStreamOptions = {}
 ) => {

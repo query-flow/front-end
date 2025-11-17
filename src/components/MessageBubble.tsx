@@ -1,6 +1,8 @@
 import { Card } from '@/components/ui/card';
 import { DataTable } from '@/components/DataTable';
 import { ChartRenderer } from '@/components/charts/ChartRenderer';
+import { InteractiveChartEditor } from '@/components/charts/InteractiveChartEditor';
+import { ChartConfig } from '@/components/charts/SimpleChart';
 import { ChartData } from '@/types/charts';
 
 interface MessageBubbleProps {
@@ -15,10 +17,21 @@ interface MessageBubbleProps {
     summary: string;
     chart?: ChartData;
   };
+  chartConfig?: ChartConfig; // NEW: LLM-generated chart config
 }
 
-export const MessageBubble = ({ role, content, sql, table, insights }: MessageBubbleProps) => {
-  console.log('[MessageBubble] Rendering:', { role, content, hasTable: !!table, hasSql: !!sql, hasInsights: !!insights, table, insights });
+export const MessageBubble = ({ role, content, sql, table, insights, chartConfig }: MessageBubbleProps) => {
+  console.log('[MessageBubble] Rendering:', {
+    role,
+    content,
+    hasTable: !!table,
+    hasSql: !!sql,
+    hasInsights: !!insights,
+    hasChart: !!chartConfig,
+    chartConfig: chartConfig,
+    table,
+    insights
+  });
 
   if (role === 'user') {
     return (
@@ -39,7 +52,17 @@ export const MessageBubble = ({ role, content, sql, table, insights }: MessageBu
               <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground m-0">{content}</p>
             </div>
           )}
-          
+
+          {/* Interactive Chart (if LLM generated one) */}
+          {chartConfig && table && (
+            <InteractiveChartEditor
+              data={table.rows}
+              columns={table.columns}
+              initialConfig={chartConfig}
+              compact={true}
+            />
+          )}
+
           {table && (
             <div className="border border-border rounded-lg overflow-hidden bg-card">
               <DataTable columns={table.columns} rows={table.rows} />
